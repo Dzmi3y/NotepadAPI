@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NotepadAPI.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace NotepadAPI
 {
@@ -23,6 +25,9 @@ namespace NotepadAPI
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddTransient<IApplicationContext, ApplicationContext>();
+            string connectionString = Configuration.GetConnectionString("DefaultConnection");
+            services.AddDbContext<ApplicationContext>(option=>option.UseSqlServer(connectionString));
             services.AddMvc();
         }
 
