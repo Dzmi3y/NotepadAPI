@@ -11,7 +11,6 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Configuration;
 using System.Text;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace NotepadAPI.Controllers
 {
@@ -26,35 +25,28 @@ namespace NotepadAPI.Controllers
             this.contextDb = contextDb;
         }
 
-
         [HttpPost]
-        public IActionResult Post([FromBody] string email, string password)
+        public IActionResult Post([FromBody] UserDataForAuthentication dataForAuthentication)
         {
             IActionResult response = Unauthorized();
 
-            User currentUser = contextDb.Users.FirstOrDefault(u => ((u.Email == email) && (u.Password == password)));
+            User currentUser = contextDb.Users.FirstOrDefault(u => ((u.Email == dataForAuthentication.Email) && (u.Password == dataForAuthentication.Password)));
 
             if (currentUser != null)
             {
-                var tokenString = BuildToken(currentUser.Email);
+                var tokenString = BuildToken(currentUser.UserId);
                 response = Ok(new { token = tokenString, email=currentUser.Email});
             }
-
-
             return response;
         }
 
-    
-
-
-
-
-        private string BuildToken(string userEmail)
+        private string BuildToken(int userId)
         {
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Email,userEmail),
+                new Claim(JwtRegisteredClaimNames.NameId,userId.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti,Guid.NewGuid().ToString())
+                
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]));
