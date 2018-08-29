@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using NotepadAPI.Models;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace NotepadAPI.Controllers
 {
@@ -22,21 +22,15 @@ namespace NotepadAPI.Controllers
             this.contextDb = contextDb;
         }
 
-        // GET: api/<controller>
-        [HttpGet]
+        [HttpGet, Authorize]
         public IActionResult Get()
-        {
-            int id = 1;
-            return Ok();
-        }
-
-        // GET api/<controller>/5
-        [HttpGet("{id}")]
-        public IActionResult Get(int id)
         {
             try
             {
-                User currentUser = contextDb.Users.FirstOrDefault(u => u.UserId == id);
+                Claim claim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+                string idOfCurrentUser = claim.Value;
+
+                User currentUser = contextDb.Users.FirstOrDefault(u => u.UserId.ToString() == idOfCurrentUser);
                 if (currentUser != null)
                 {
                     return Ok(currentUser);
@@ -49,15 +43,14 @@ namespace NotepadAPI.Controllers
             }
         }
 
-        // POST api/<controller>
         [HttpPost]
         public IActionResult Post([FromBody] User newUser)
         {
             try
             {
                 User userForCheck = contextDb.Users.FirstOrDefault(u => u.Email == newUser.Email);
-                
-                if ((userForCheck == null)&&(newUser.Email!=null))
+
+                if ((userForCheck == null) && (newUser.Email != null))
                 {
                     contextDb.Users.Add(newUser);
                     contextDb.SaveChanges();
@@ -66,25 +59,42 @@ namespace NotepadAPI.Controllers
                 }
                 return BadRequest();
             }
-            catch(Exception e)
+            catch 
             {
                 return StatusCode(500);
             }
 
         }
 
-        // PUT api/<controller>/5
-        [HttpPut("{id}")]
-        public IActionResult Put(int id,[FromBody]User updatedUser)
+        
+        [HttpPut, Authorize]
+        public IActionResult Put([FromBody]UserDataForAuthentication updatedAuthenticationData)
         {
             try
             {
-                User currentUser = contextDb.Users.FirstOrDefault(u => u.UserId ==id);
-                if (currentUser != null)
+                Claim claim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+                string idOfCurrentUser = claim.Value;
+
+                User currentUser = contextDb.Users.FirstOrDefault(u => u.UserId.ToString() == idOfCurrentUser);
+
+                User checkedUser = contextDb.Users.FirstOrDefault(u => u.Email == updatedAuthenticationData.Email);
+
+                if ((checkedUser != null) && (checkedUser != currentUser))
+                {
+                    return BadRequest("Email exists");
+                }
+
+                if ((currentUser != null) && (updatedAuthenticationData != null))
                 {
 
-                    
-                    contextDb.Users.Update(updatedUser);
+                    currentUser.Email = updatedAuthenticationData.Email;
+
+                    if ((updatedAuthenticationData.Password != "") && (updatedAuthenticationData.Password != null))
+                    {
+                        currentUser.Password = updatedAuthenticationData.Password;
+                    }
+
+                    contextDb.Users.Update(currentUser);
                     contextDb.SaveChanges();
 
                     return Ok(currentUser);
@@ -96,15 +106,18 @@ namespace NotepadAPI.Controllers
                 return StatusCode(500);
             }
         }
-    
 
-        // DELETE api/<controller>/5
-        [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+
+        [HttpDelete, Authorize]
+        public IActionResult Delete()
         {
             try
             {
-                User currentUser = contextDb.Users.FirstOrDefault(u => u.UserId == id);
+                Claim claim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+                string idOfCurrentUser = claim.Value;
+
+
+                User currentUser = contextDb.Users.FirstOrDefault(u => u.UserId.ToString() == idOfCurrentUser);
                 if (currentUser != null)
                 {
                     contextDb.Users.Remove(currentUser);
